@@ -30,8 +30,8 @@ def main():
     yesterday = get_yesterday_date()
     current_user = get_current_user()
     
-    # Get all commits from yesterday with stats
-    log_command = f'git log --since="{yesterday} 00:00" --until="{yesterday} 23:59" --format="%an|%s" --numstat'
+    # Get all commits from yesterday with stats across all branches
+    log_command = f'git log --all --since="{yesterday} 00:00" --until="{yesterday} 23:59" --format="%an|%s" --numstat'
     log_output = run_git_command(log_command)
     
     # Process the output
