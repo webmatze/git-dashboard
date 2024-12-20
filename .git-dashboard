@@ -85,7 +85,7 @@ def main():
         for commit in users_commits[current_user]:
             print(f"  • {commit}")
     else:
-        print("  No commits yesterday")
+        print(f"  No commits on {target_date}")
     
     # 2. Other users' commits
     print("\n👥 Other team members' commits:")
@@ -96,7 +96,7 @@ def main():
                 print(f"    • {commit}")
     
     # 3. Leaderboard
-    print("\n🏆 Yesterday's Leaderboard:")
+    print(f"\n🏆 Leaderboard for {target_date}:")
     print("\nUser               Commits  Added    Deleted")
     print("─" * 45)
     
