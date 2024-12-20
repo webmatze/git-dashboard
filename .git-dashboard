@@ -1,0 +1,92 @@
+#!/usr/bin/env python3
+
+import subprocess
+from datetime import datetime, timedelta
+import re
+from collections import defaultdict
+
+def run_git_command(command):
+    result = subprocess.run(command, shell=True, capture_output=True, text=True)
+    return result.stdout.strip()
+
+def get_yesterday_date():
+    yesterday = datetime.now() - timedelta(days=1)
+    return yesterday.strftime('%Y-%m-%d')
+
+def get_current_user():
+    return run_git_command("git config user.name")
+
+def parse_commit_stats(log_entry):
+    stats_match = re.search(r'(\d+) files? changed(?:, (\d+) insertions?\(\+\))?(?:, (\d+) deletions?\(-\))?', log_entry)
+    if stats_match:
+        return {
+            'files': int(stats_match.group(1) or 0),
+            'insertions': int(stats_match.group(2) or 0),
+            'deletions': int(stats_match.group(3) or 0)
+        }
+    return {'files': 0, 'insertions': 0, 'deletions': 0}
+
+def main():
+    yesterday = get_yesterday_date()
+    current_user = get_current_user()
+    
+    # Get all commits from yesterday with stats
+    log_command = f'git log --since="{yesterday} 00:00" --until="{yesterday} 23:59" --format="%an|%s" --numstat'
+    log_output = run_git_command(log_command)
+    
+    # Process the output
+    users_commits = defaultdict(list)
+    users_stats = defaultdict(lambda: {'commits': 0, 'insertions': 0, 'deletions': 0})
+    
+    if log_output:
+        current_commit = {'message': '', 'stats': {'insertions': 0, 'deletions': 0}}
+        current_author = None
+        
+        for line in log_output.split('\n'):
+            if '|' in line:  # This is a commit line
+                author, message = line.split('|', 1)
+                current_author = author
+                users_commits[author].append(message)
+                users_stats[author]['commits'] += 1
+            elif line.strip() and len(line.split()) == 3:  # This is a stat line
+                additions, deletions, _ = line.split()
+                if additions != '-' and deletions != '-':
+                    users_stats[current_author]['insertions'] += int(additions)
+                    users_stats[current_author]['deletions'] += int(deletions)
+    
+    # Print the dashboard
+    print(f"\n🎯 Git Dashboard for {yesterday}\n")
+    
+    # 1. Current user's commits
+    print(f"📊 Your commits ({current_user}):")
+    if current_user in users_commits:
+        for commit in users_commits[current_user]:
+            print(f"  • {commit}")
+    else:
+        print("  No commits yesterday")
+    
+    # 2. Other users' commits
+    print("\n👥 Other team members' commits:")
+    for user, commits in users_commits.items():
+        if user != current_user:
+            print(f"\n  {user}:")
+            for commit in commits:
+                print(f"    • {commit}")
+    
+    # 3. Leaderboard
+    print("\n🏆 Yesterday's Leaderboard:")
+    print("\nUser               Commits  Added    Deleted")
+    print("─" * 45)
+    
+    # Sort users by number of commits
+    sorted_users = sorted(
+        users_stats.items(),
+        key=lambda x: (x[1]['commits'], x[1]['insertions']),
+        reverse=True
+    )
+    
+    for user, stats in sorted_users:
+        print(f"{user:<18} {stats['commits']:<8} {stats['insertions']:<8} {stats['deletions']:<8}")
+
+if __name__ == "__main__":
+    main()
