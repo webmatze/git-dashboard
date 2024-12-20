@@ -4,6 +4,7 @@ import subprocess
 from datetime import datetime, timedelta
 import re
 from collections import defaultdict
+import argparse
 
 def run_git_command(command):
     result = subprocess.run(command, shell=True, capture_output=True, text=True)
@@ -26,12 +27,33 @@ def parse_commit_stats(log_entry):
         }
     return {'files': 0, 'insertions': 0, 'deletions': 0}
 
+def parse_date(date_str=None):
+    if not date_str:
+        # Default to yesterday
+        return get_yesterday_date()
+    
+    try:
+        # Try to parse the provided date
+        date = datetime.strptime(date_str, '%Y-%m-%d')
+        return date.strftime('%Y-%m-%d')
+    except ValueError:
+        if date_str.lower() == 'today':
+            return datetime.now().strftime('%Y-%m-%d')
+        elif date_str.lower() == 'yesterday':
+            return get_yesterday_date()
+        else:
+            raise ValueError("Date must be in YYYY-MM-DD format, 'today', or 'yesterday'")
+
 def main():
-    yesterday = get_yesterday_date()
+    parser = argparse.ArgumentParser(description='Git Dashboard - Show commit statistics for a specific date')
+    parser.add_argument('--date', '-d', help='Date to show stats for (YYYY-MM-DD, today, or yesterday). Defaults to yesterday')
+    args = parser.parse_args()
+
+    target_date = parse_date(args.date)
     current_user = get_current_user()
     
     # Get all commits from yesterday with stats across all branches
-    log_command = f'git log --all --since="{yesterday} 00:00" --until="{yesterday} 23:59" --format="%an|%s" --numstat'
+    log_command = f'git log --all --since="{target_date} 00:00" --until="{target_date} 23:59" --format="%an|%s" --numstat'
     log_output = run_git_command(log_command)
     
     # Process the output
@@ -55,7 +77,7 @@ def main():
                     users_stats[current_author]['deletions'] += int(deletions)
     
     # Print the dashboard
-    print(f"\n🎯 Git Dashboard for {yesterday}\n")
+    print(f"\n🎯 Git Dashboard for {target_date}\n")
     
     # 1. Current user's commits
     print(f"📊 Your commits ({current_user}):")
